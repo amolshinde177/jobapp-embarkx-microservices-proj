@@ -1,0 +1,149 @@
+services:
+  postgres:
+    image: postgres
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      PGDATA: /data/postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres:/data/postgres
+    networks:
+      - postgres
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    networks:
+      - postgres
+    restart: unless-stopped
+
+  servicereg:
+    image: amolshinde177/servicereg:latest
+    container_name: servicereg
+    ports:
+      - "8761:8761"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  config-server-ms:
+    image: amolshinde177/config-server-ms:latest
+    container_name: config-server-ms
+    ports:
+      - "8085:8085"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka/
+    depends_on:
+      - servicereg
+
+  companyms:
+    image: amolshinde177/companyms:latest
+    container_name: company
+    ports:
+      - "8083:8083"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka/
+      - EUREKA_INSTANCE_HOSTNAME=company
+    depends_on:
+      - servicereg
+      - config-server-ms
+
+  jobms:
+    image: amolshinde177/jobms:latest
+    container_name: job
+    ports: 
+      - "8082:8082"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka/
+      - EUREKA_INSTANCE_HOSTNAME=job
+    depends_on:
+      - servicereg
+      - config-server-ms
+
+  reviewms:
+    image: amolshinde177/reviewms:latest
+    container_name: review
+    ports:
+      - "8084:8084"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka/
+      - EUREKA_INSTANCE_HOSTNAME=review
+    depends_on:
+      - servicereg
+      - config-server-ms
+
+  gateway-ms: 
+    image: amolshinde177/gateway-ms:latest
+    container_name: gateway-ms
+    ports:
+      - "8086:8086"
+    networks:
+      - microservice-network
+      - postgres
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://servicereg:8761/eureka/
+      - EUREKA_INSTANCE_HOSTNAME=gateway
+    depends_on:
+      - servicereg
+      - config-server-ms
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports: 
+      - "9411:9411"
+    networks:
+      - microservice-network
+      - postgres
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5673:5672"
+      - "15673:15672"
+    networks:
+      - microservice-network
+      - postgres
+    restart: unless-stopped
+
+networks:
+  microservice-network:
+    driver: bridge
+  postgres:
+    driver: bridge
+
+volumes:
+  postgres:
+  pgadmin:

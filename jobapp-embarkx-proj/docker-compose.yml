@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+
+  app:
+    build: .
+    container_name: jobapp
+    ports:
+      - 9091:9091
+    networks:
+      - job-app-network
+    depends_on:
+      - postgres
+    environment:       
+      - DB_HOST=postgres
+      - SERVER_PORT=9091
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:latest
+    container_name: jobapp-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: job-app
+    ports:
+      - 5432:5432
+    volumes:
+      - postgres-job-app-data:/var/lib/postgresql/data
+    networks:
+      - job-app-network
+    restart: unless-stopped
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - 5050:80
+    depends_on:
+      - postgres
+    networks:
+      - job-app-network
+    restart: unless-stopped
+
+networks:
+  job-app-network:
+    driver: bridge
+
+volumes:
+  postgres-job-app-data:
